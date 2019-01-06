@@ -1,0 +1,6 @@
+humako/target
+humako/db-parser/GreenSpy.mdb
+**/*.rs.bk
+.idea
+.env
+.DS_Store

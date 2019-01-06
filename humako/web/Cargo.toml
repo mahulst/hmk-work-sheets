@@ -1,0 +1,13 @@
+[package]
+name = "web"
+version = "0.1.0"
+authors = ["Michel van der Hulst <michel@voorkanter.com>"]
+edition = "2018"
+
+[dependencies]
+iron = "0.6.0"
+events = { path = "../events" }
+
+serde = "1.0.84"
+serde_derive = "1.0.84"
+serde_json = "1.0"

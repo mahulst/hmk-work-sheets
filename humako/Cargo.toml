@@ -1,0 +1,14 @@
+[package]
+name = "humako"
+version = "0.1.0"
+authors = ["Michel van der Hulst <michel@voorkanter.com>"]
+edition = "2018"
+
+[dependencies]
+db-parser = { path = "db-parser" }
+web = { path = "web" }
+events = { path = "events" }
+worksheets = { path = "worksheets" }
+chrono = "0.4.6"
+uuid = "0.6"
+

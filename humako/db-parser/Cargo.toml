@@ -1,0 +1,13 @@
+[package]
+name = "db-parser"
+version = "0.1.0"
+authors = ["Michel van der Hulst <michel@voorkanter.com>"]
+edition = "2018"
+
+[dependencies]
+csv = "1"
+stringreader = "0.1.1"
+serde = "1.0.84"
+serde_derive = "1.0.84"
+serde_json = "1.0"
+chrono = { version=  "0.4.6", features = ["serde"] }
