@@ -14,5 +14,9 @@ services:
   fe:
     build:
       context: ./frontend
+    volumes:
+     - /docker-volumes/etc/letsencrypt/live/humako.voorkanter.com/fullchain.pem:/etc/letsencrypt/live/humako.voorkanter.com/fullchain.pem
+     - /docker-volumes/etc/letsencrypt/live/humako.voorkanter.com/privkey.pem:/etc/letsencrypt/live/humako.voorkanter.com/privkey.pem
     ports:
+     - 443:443       
      - 80:80

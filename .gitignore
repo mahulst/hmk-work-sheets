@@ -5,3 +5,4 @@ humako/db-parser/GreenSpy.mdb
 .idea
 .env
 .DS_Store
+frontend/dhparam-2048.pem
