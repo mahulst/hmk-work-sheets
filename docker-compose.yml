@@ -11,3 +11,8 @@ services:
       context: ./postgres
     ports:
      - 5432:5432
+  fe:
+    build:
+      context: ./frontend
+    ports:
+     - 80:80
