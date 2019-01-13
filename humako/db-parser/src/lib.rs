@@ -10,6 +10,7 @@ use stringreader::StringReader;
 use std::collections::HashMap;
 use chrono::NaiveDateTime;
 use serde::ser::{Serialize, Serializer, SerializeStruct};
+use std::path::PathBuf;
 
 #[allow(non_snake_case)]
 #[derive(Debug, Deserialize)]
@@ -41,24 +42,24 @@ pub type Employees = HashMap<u32, String>;
 pub type Actions = HashMap<u32, String>;
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct TimeRowEvent<'a> {
+pub struct TimeRowEvent {
     pub id: u32,
-    pub employee: &'a str,
-    pub action: &'a str,
+    pub employee: String,
+    pub action: String,
     pub timestamp: NaiveDateTime,
 }
 
-impl<'a> TimeRowEvent<'a>  {
+impl TimeRowEvent {
     pub fn stringify(&self) -> String {
         serde_json::to_string(self).unwrap()
     }
 }
 
 
-pub fn parse_db() {
-    let time = read_time_entries();
-    let employees = get_employees();
-    let actions = get_actions();
+pub fn parse_db(path_to_db: &PathBuf) -> Vec<TimeRowEvent> {
+    let time = read_time_entries(path_to_db);
+    let employees = get_employees(path_to_db);
+    let actions = get_actions(path_to_db);
     let default_value = &String::from("Onbekend");
 
     time
@@ -66,11 +67,13 @@ pub fn parse_db() {
         .map(|time_entry| {
             let employee = employees
                 .get(&time_entry.Empl)
-                .unwrap_or(default_value);
+                .unwrap_or(default_value)
+                .clone();
 
             let action = actions
                 .get(&time_entry.Action)
-                .unwrap_or(default_value);
+                .unwrap_or(default_value)
+                .clone();
 
             let date = chrono::NaiveDate::parse_from_str(&time_entry.Date, "%Y%m%d")
                 .expect("Invalid date");
@@ -87,14 +90,12 @@ pub fn parse_db() {
                 timestamp,
             }
         })
-        .for_each(|time| {
-            eprintln!("time = {:#?}", time);
-        });
+        .collect()
 }
 
-fn read_time_entries() -> Vec<TimeEntryRaw> {
+fn read_time_entries(path_to_db: &PathBuf) -> Vec<TimeEntryRaw> {
     let result = Command::new("mdb-export")
-        .arg("/Users/michelvanderhulst/projects/rust/humako/humako/db-parser/GreenSpy.mdb")
+        .arg(path_to_db)
         .arg("Time_RawData")
         .output()
         .expect("get csv of data").stdout;
@@ -117,9 +118,9 @@ fn read_time_entries() -> Vec<TimeEntryRaw> {
         .collect()
 }
 
-pub fn get_employees() -> Employees {
+pub fn get_employees(path_to_db: &PathBuf) -> Employees {
     let result = Command::new("mdb-export")
-        .arg("/Users/michelvanderhulst/projects/rust/humako/humako/db-parser/GreenSpy.mdb")
+        .arg(path_to_db)
         .arg("PersonelData")
         .output()
         .expect("get csv of data").stdout;
@@ -137,9 +138,9 @@ pub fn get_employees() -> Employees {
         })
 }
 
-pub fn get_actions() -> Actions {
+pub fn get_actions(path_to_db: &PathBuf) -> Actions {
     let result = Command::new("mdb-export")
-        .arg("/Users/michelvanderhulst/projects/rust/humako/humako/db-parser/GreenSpy.mdb")
+        .arg(path_to_db)
         .arg("Actions")
         .output()
         .expect("get csv of data").stdout;
