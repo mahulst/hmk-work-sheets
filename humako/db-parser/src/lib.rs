@@ -74,12 +74,12 @@ pub fn parse_db(path_to_db: &PathBuf) -> Vec<TimeRowEvent> {
                 .get(&time_entry.Action)
                 .unwrap_or(default_value)
                 .clone();
-
+            eprintln!("time_entry.Date = {:#?}", time_entry.Date);
             let date = chrono::NaiveDate::parse_from_str(&time_entry.Date, "%Y%m%d")
-                .expect("Invalid date");
+                .unwrap_or(chrono::NaiveDate::from_ymd(1970, 1, 1));
 
             let time = chrono::NaiveTime::parse_from_str(&time_entry.Time, "%k%M%S")
-                .expect("Invalid time");
+                .unwrap_or(chrono::NaiveTime::from_hms(0, 0, 0));
 
             let timestamp = NaiveDateTime::new(date, time);
 
