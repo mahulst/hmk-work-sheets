@@ -84,7 +84,7 @@ update msg model =
             ( Uploading 0
             , Http.request
                 { method = "POST"
-                , url = "http://localhost:3010/upload"
+                , url = "/upload/"
                 , headers = []
                 , body = Http.multipartBody (List.map (Http.filePart "file") files)
                 , expect = Http.expectJson Uploaded workSheetDecoder
