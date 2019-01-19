@@ -24,16 +24,16 @@ use iron::Handler;
 pub fn serve() {
     let mut router = router::Router::new();
 
-    router.route(iron::method::Get, "hello", |_: &mut Request| {
+    router.route(iron::method::Get, "/hello", |_: &mut Request| {
         Ok(Response::with((iron::status::Ok, "Hello world !")))
     }, "hello");
 
-    router.route(iron::method::Post, "upload", process_request, "hello2");
+    router.route(iron::method::Post, "/upload", process_request, "hello2");
     let cors_middleware = CorsMiddleware::with_allow_any();
     let mut chain = Chain::new(router);
     chain.link_around(cors_middleware);
 
-    Iron::new(chain).http("localhost:3010");
+    Iron::new(chain).http("0.0.0.0:3010");
 }
 
 fn process_request(request: &mut Request) -> IronResult<Response> {

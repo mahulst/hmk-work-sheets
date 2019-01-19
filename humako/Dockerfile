@@ -3,10 +3,11 @@ FROM rust:1.31.1-stretch as builder
 COPY ./ /home/app
 WORKDIR /home/app
 
-RUN cargo build --release
+RUN cargo build
 
 FROM postgres:11
-COPY --from=builder /home/app/target/release/humako /
+RUN apt update && apt install mdbtools -y
+COPY --from=builder /home/app/target/debug/humako /
 
 CMD /humako
 

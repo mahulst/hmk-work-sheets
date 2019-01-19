@@ -1,22 +1,38 @@
 version: '3.1'
 
 services:
-  be:
+  backend:
+    environment:
+    - DATABASE_URL=postgres://postgres:postgres@database:5432/humako_events
     build:
       context: ./humako
     ports:
     - 3010:3010
-  db:
+    expose:
+    - 3010
+    depends_on:
+    - database
+  database:
     build:
       context: ./postgres
     ports:
-     - 5432:5432
-  fe:
+    - 5432:5432
+    expose:
+    - 5432
+  frontend:
     build:
       context: ./frontend
-    volumes:
-     - /docker-volumes/etc/letsencrypt/live/humako.voorkanter.com/fullchain.pem:/etc/letsencrypt/live/humako.voorkanter.com/fullchain.pem
-     - /docker-volumes/etc/letsencrypt/live/humako.voorkanter.com/privkey.pem:/etc/letsencrypt/live/humako.voorkanter.com/privkey.pem
     ports:
-     - 443:443       
-     - 80:80
+    - 8080:80
+  proxy:
+    build:
+      context: ./proxy
+    volumes:
+    - /docker-volumes/etc/letsencrypt/live/humako.voorkanter.com/fullchain.pem:/etc/letsencrypt/live/humako.voorkanter.com/fullchain.pem
+    - /docker-volumes/etc/letsencrypt/live/humako.voorkanter.com/privkey.pem:/etc/letsencrypt/live/humako.voorkanter.com/privkey.pem
+    ports:
+    - 443:443
+    - 80:80
+    depends_on:
+    - frontend
+    - backend
