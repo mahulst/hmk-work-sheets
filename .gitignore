@@ -6,3 +6,4 @@ humako/db-parser/GreenSpy.mdb
 .env
 .DS_Store
 proxy/dhparam-2048.pem
+proxy/.htpasswd
