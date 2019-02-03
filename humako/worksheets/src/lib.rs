@@ -14,7 +14,7 @@ pub fn derive_work_sheet(events: Vec<Event>) -> HashMap<NaiveDate, HashMap<Strin
     let mut time_entries_per_employee: HashMap<String, Vec<TimeRowEvent>> = events
         .iter()
         .map(|event| {
-            let time_entry: TimeRowEvent = serde_json::from_str(&event.payload).unwrap();
+            let time_entry: TimeRowEvent = serde_json::from_str(&event.payload).expect("parsing failed");
             return time_entry;
         })
         .fold(HashMap::new(), |mut map, time_entry: TimeRowEvent| {

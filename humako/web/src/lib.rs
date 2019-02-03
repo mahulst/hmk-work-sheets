@@ -3,7 +3,6 @@ extern crate serde_json;
 #[macro_use]
 extern crate serde_derive;
 
-
 extern crate router;
 extern crate iron;
 extern crate multipart;
@@ -14,10 +13,9 @@ use multipart::server::{Multipart, Entries, SaveResult};
 use multipart::server::save::SavedData;
 use iron::prelude::*;
 use iron::status;
-use tempfile::tempdir;
 use std::collections::HashMap;
 use iron_cors::CorsMiddleware;
-
+use std::env;
 use iron::prelude::*;
 use iron::Handler;
 
@@ -28,12 +26,53 @@ pub fn serve() {
         Ok(Response::with((iron::status::Ok, "Hello world !")))
     }, "hello");
 
+    router.route(iron::method::Get, "/day/:date", get_work_sheet, "get_events");
+    router.route(iron::method::Get, "/available-days", get_available_days, "get_available_days");
+
     router.route(iron::method::Post, "/upload", process_request, "hello2");
     let cors_middleware = CorsMiddleware::with_allow_any();
     let mut chain = Chain::new(router);
     chain.link_around(cors_middleware);
 
     Iron::new(chain).http("0.0.0.0:3010");
+}
+
+fn get_available_days(request: &mut Request) -> IronResult<Response> {
+    let conn = events::establish_connection();
+    let events = events::get_events(&conn);
+
+    let worksheet = worksheets::derive_work_sheet(events);
+
+    let available_days: Vec<&chrono::NaiveDate> = worksheet.keys().collect();
+    let json = serde_json::to_string(&available_days).unwrap();
+
+    Ok(Response::with((status::Ok, json)))
+}
+
+fn get_work_sheet(request: &mut Request) -> IronResult<Response> {
+    let params = request.extensions.get::<router::Router>().unwrap();
+    match &params.find("date")
+        .and_then(|d: &str| {
+            chrono::NaiveDate::parse_from_str(d, "%Y-%m-%d").ok()
+        }) {
+        Some(date) => {
+            let conn = events::establish_connection();
+            let events = events::get_events(&conn);
+
+            let worksheet = worksheets::derive_work_sheet(events);
+
+
+            let day = worksheet.get(&date);
+
+            match day {
+                Some(data) => {
+                    Ok(Response::with((status::Ok, serde_json::to_string(&data).unwrap())))
+                }
+                None => Ok(Response::with((status::BadRequest, "Incorrect date submitted")))
+            }
+        }
+        None => Ok(Response::with((status::BadRequest, "Incorrect date submitted")))
+    }
 }
 
 fn process_request(request: &mut Request) -> IronResult<Response> {

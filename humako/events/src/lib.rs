@@ -73,7 +73,9 @@ pub fn save_events(conn: &PgConnection, list_of_events: Vec<TimeRowEvent>) {
 
     diesel::insert_into(events::table)
         .values(&result)
-        .on_conflict_do_nothing()
+        .on_conflict(events::unique_id)
+        .do_update()
+        .set(events::payload.eq(diesel::pg::upsert::excluded(events::payload)))
         .execute(conn)
-        .expect("Failed to save events");
+        .expect("insert failed");
 }

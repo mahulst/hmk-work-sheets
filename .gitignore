@@ -1,6 +1,6 @@
 humako/target
 humako/worksheets/target
-humako/db-parser/GreenSpy.mdb
+GreenSpy.mdb
 **/*.rs.bk
 .idea
 .env

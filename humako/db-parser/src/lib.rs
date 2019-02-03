@@ -51,7 +51,7 @@ pub struct TimeRowEvent {
 
 impl TimeRowEvent {
     pub fn stringify(&self) -> String {
-        serde_json::to_string(self).unwrap()
+        serde_json::to_string(self).expect("stringify failed")
     }
 }
 
@@ -74,7 +74,7 @@ pub fn parse_db(path_to_db: &PathBuf) -> Vec<TimeRowEvent> {
                 .get(&time_entry.Action)
                 .unwrap_or(default_value)
                 .clone();
-            eprintln!("time_entry.Date = {:#?}", time_entry.Date);
+
             let date = chrono::NaiveDate::parse_from_str(&time_entry.Date, "%Y%m%d")
                 .unwrap_or(chrono::NaiveDate::from_ymd(1970, 1, 1));
 
