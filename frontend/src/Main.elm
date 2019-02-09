@@ -1,7 +1,8 @@
-module Main exposing (Actions, DatabaseState(..), Model, Msg(..), Page(..), WorkDay, WorkSheet, actionsDecoder, filesDecoder, init, main, subscriptions, update, uploadView, view, viewAction, viewActions, viewDay, viewDuration, viewWorkSheet, workDayDecoder, workSheetDecoder)
+module Main exposing (Actions, DatabaseState(..), Model, Msg(..), Page(..), WorkDay, WorkSheet, actionsDecoder, filesDecoder, init, main, subscriptions, update, uploadView, view, viewAction, viewActions, viewDay, viewDuration, workDayDecoder, workSheetDecoder)
 
 import Browser
 import Browser.Navigation exposing (Key)
+import Date exposing (Date)
 import Dict exposing (Dict)
 import File exposing (File)
 import Html exposing (..)
@@ -9,6 +10,9 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Http
 import Json.Decode as D
+import RemoteData exposing (RemoteData)
+import Task
+import Time
 import Url exposing (Url)
 import Url.Parser as Parser exposing ((</>), Parser, oneOf, s)
 
@@ -47,12 +51,13 @@ type alias WorkSheet =
 type alias Model =
     { page : Page
     , key : Key
+    , currentDate : Date
     }
 
 
 type Page
     = UploadingDatabase DatabaseState
-    | Day String
+    | Day DayModel
     | AvailableDays
     | PageNone
 
@@ -71,6 +76,17 @@ type DatabaseState
     | Fail
 
 
+type DayError
+    = DayNotFound
+    | ParseError
+
+
+type alias DayModel =
+    { day : String
+    , workDay : RemoteData DayError WorkDay
+    }
+
+
 parseUrl : Url -> Route
 parseUrl url =
     case Parser.parse routeParser url of
@@ -79,6 +95,14 @@ parseUrl url =
 
         Nothing ->
             NotFound
+
+
+fetchDay : String -> Cmd Msg
+fetchDay day =
+    Http.get
+        { url = "http://localhost:3010/day/" ++ day
+        , expect = Http.expectJson GotDay workDayDecoder
+        }
 
 
 routeParser : Parser (Route -> a) a
@@ -106,30 +130,33 @@ getPath route =
             "/dag/" ++ day
 
 
-getPage : Route -> Page
+getPage : Route -> ( Page, Cmd Msg )
 getPage route =
     case route of
         NotFound ->
-            PageNone
+            ( PageNone, Cmd.none )
 
         Upload ->
-            UploadingDatabase Waiting
+            ( UploadingDatabase Waiting, Cmd.none )
 
         SelectAvailableDay ->
-            AvailableDays
+            ( AvailableDays, Cmd.none )
 
         ViewDay day ->
-            Day day
+            ( Day { day = day, workDay = RemoteData.NotAsked }, fetchDay day )
 
 
 init : () -> Url -> Key -> ( Model, Cmd Msg )
 init _ url key =
     let
-        page =
+        ( page, cmd ) =
             parseUrl url |> getPage
+
+        currentDate =
+            Date.fromCalendarDate 2019 Time.Jan 1
     in
-    ( { page = page, key = key }
-    , Cmd.none
+    ( { page = page, key = key, currentDate = currentDate }
+    , Cmd.batch [ Date.today |> Task.perform ReceiveDate, cmd ]
     )
 
 
@@ -158,6 +185,8 @@ type Msg
     | Uploaded (Result Http.Error WorkSheet)
     | OnUrlRequest Browser.UrlRequest
     | OnUrlChange Url
+    | ReceiveDate Date
+    | GotDay (Result Http.Error WorkDay)
     | Noop
 
 
@@ -188,20 +217,27 @@ update msg model =
         Uploaded result ->
             case result of
                 Ok response ->
-                    ( { model | page = UploadingDatabase (Done response) }, Cmd.none )
+                    ( { model | page = UploadingDatabase (Done response) }
+                    , Browser.Navigation.pushUrl
+                        model.key
+                        (getPath SelectAvailableDay)
+                    )
 
                 Err _ ->
                     ( { model | page = UploadingDatabase Fail }, Cmd.none )
 
         OnUrlChange url ->
             let
-                newPage =
+                ( newPage, cmd ) =
                     parseUrl url |> getPage
             in
-            ( { model | page = newPage }, Cmd.none )
+            ( { model | page = newPage }, cmd )
 
         Noop ->
             ( model, Cmd.none )
+
+        ReceiveDate date ->
+            ( { model | currentDate = date }, Cmd.none )
 
         OnUrlRequest urlRequest ->
             case urlRequest of
@@ -215,14 +251,36 @@ update msg model =
                     , Browser.Navigation.load url
                     )
 
+        GotDay (Ok workDay) ->
+            let
+                page =
+                    Day
+                        { workDay = RemoteData.Success workDay
+                        , day = ""
+                        }
+            in
+            ( { model | page = page }, Cmd.none )
+
+        GotDay (Err err) ->
+            let
+                page =
+                    Day
+                        { workDay = RemoteData.Failure DayNotFound
+                        , day = ""
+                        }
+            in
+            ( { model | page = page }, Cmd.none )
+
 
 
 -- SUBSCRIPTIONS
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
-    Http.track "upload" GotProgress
+subscriptions _ =
+    Sub.batch
+        [ Http.track "upload" GotProgress
+        ]
 
 
 
@@ -264,13 +322,60 @@ view model =
             { title = "Upload uren registratie", body = header ++ [ uploadView database ] }
 
         Day day ->
-            { title = "Uren voor " ++ day, body = header ++ [ div [] [ text day ] ] }
+            { title = "Uren voor " ++ day.day, body = header ++ [ viewDay day ] }
 
         AvailableDays ->
-            { title = "Kies een dag", body = [ div [] [ text "pick a day" ] ] }
+            { title = "Kies een dag"
+            , body =
+                header
+                    ++ [ div []
+                            [ datePickerView model.currentDate
+                            ]
+                       ]
+            }
 
         PageNone ->
             { title = "404", body = [ div [] [ text "Pagina niet gevonden" ] ] }
+
+
+getDateOffset : Date -> Int -> Date
+getDateOffset date offset =
+    Date.add Date.Days -offset date
+
+
+datePickerView : Date -> Html Msg
+datePickerView currentDate =
+    let
+        dayNumber =
+            Date.weekdayNumber currentDate
+
+        lastFourWeeks =
+            List.range 0 (7 * 4 + dayNumber - 1)
+
+        getDateOffsetToCurrent =
+            getDateOffset currentDate
+
+        dates =
+            List.map getDateOffsetToCurrent lastFourWeeks |> List.reverse
+    in
+    div [ class "datepicker--days" ]
+        (List.map
+            (\date ->
+                a
+                    [ class "datepicker--day"
+                    , href
+                        (getPath
+                            (ViewDay
+                                (Date.format "y-MM-dd"
+                                    date
+                                )
+                            )
+                        )
+                    ]
+                    [ text (Date.format "d" date) ]
+            )
+            dates
+        )
 
 
 uploadView : DatabaseState -> Html Msg
@@ -287,8 +392,8 @@ uploadView database =
         Uploading fraction ->
             h1 [] [ text (String.fromInt (round (100 * fraction)) ++ "%") ]
 
-        Done worksheet ->
-            Html.div [] [ h1 [] [ text "DONE" ], viewWorkSheet worksheet ]
+        Done _ ->
+            Html.div [] [ h1 [] [ text "DONE" ] ]
 
         Fail ->
             h1 [] [ text "FAILED IMPORTING DATABASE" ]
@@ -313,43 +418,62 @@ viewDuration duration =
     hours ++ ":" ++ formattedMinutes
 
 
-viewAction : ( String, Int ) -> Html msg
-viewAction ( action, duration ) =
-    Html.tr [ class "action-row" ] [ Html.td [ class "action-title" ] [ text action ], Html.td [ class "duration" ] [ text (viewDuration duration) ] ]
-
-
-viewActions : ( String, Actions ) -> Html msg
-viewActions ( employee, actions ) =
+viewAction : String -> ( String, Int ) -> Html msg
+viewAction employee ( action, duration ) =
     Html.tr []
-        [ Html.td [ class "employee-name" ] [ text employee ]
-        , Html.td []
-            [ Html.table [ class "action" ]
-                (Dict.toList actions
-                    |> List.map viewAction
-                )
-            ]
+        [ Html.td [] [ text employee ]
+        , Html.td [] [ text action ]
+        , Html.td [] [ text (viewDuration duration) ]
         ]
 
 
-viewDay : ( String, WorkDay ) -> Html msg
-viewDay ( day, workDay ) =
-    Html.tr [ class "day-row" ]
-        [ Html.td [ class "day-title" ] [ text day ]
-        , Html.td []
-            [ Html.table [ class "employee" ]
-                (Dict.toList workDay
-                    |> List.map viewActions
-                )
-            ]
-        ]
+viewActions : ( String, Actions ) -> List (Html msg)
+viewActions ( employee, actions ) =
+    let
+        rows =
+            Dict.toList actions
+                |> List.map (viewAction employee)
+
+        total =
+            Dict.toList actions |> List.map Tuple.second |> List.sum
+
+        totalRow =
+            Html.tr [class "table-secondary"]
+                [ Html.td [] [ text employee ]
+                , Html.td [] [ text "Totaal" ]
+                , Html.td [] [ text (viewDuration total) ]
+                ]
+    in
+    rows ++ [totalRow]
 
 
-viewWorkSheet : WorkSheet -> Html msg
-viewWorkSheet worksheet =
-    Html.table [ class "work-sheet" ]
-        (Dict.toList worksheet
-            |> List.map viewDay
-        )
+viewDay : DayModel -> Html msg
+viewDay dayModel =
+    case dayModel.workDay of
+        RemoteData.NotAsked ->
+            div [] [ text "Laden..." ]
+
+        RemoteData.Loading ->
+            div [] [ text "Laden..." ]
+
+        RemoteData.Success workDay ->
+            Html.table [ class "workday--table table table-sm table-hover" ]
+                [ Html.thead []
+                    [ Html.tr []
+                        [ Html.th [ scope "col" ] [ text "Werknemer" ]
+                        , Html.th [ scope "col" ] [ text "Taak" ]
+                        , Html.th [ scope "col" ] [ text "Tijd" ]
+                        ]
+                    ]
+                , Html.tbody []
+                    (Dict.toList workDay
+                        |> List.map viewActions
+                        |> List.concat
+                    )
+                ]
+
+        RemoteData.Failure _ ->
+            div [] [ text "Voor deze dag is geen uren registratie beschikbaar" ]
 
 
 filesDecoder : D.Decoder (List File)

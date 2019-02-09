@@ -8,70 +8,19 @@
 [data-elm-hot="true"] {
   height: inherit;
 }
-
-body {
-  font-family: 'Source Sans Pro', 'Trebuchet MS', 'Lucida Grande', 'Bitstream Vera Sans', 'Helvetica Neue', sans-serif;
-  margin: 0;
-  text-align: center;
-  color: #293c4b;
+.datepicker--days {
+  max-width: 700px;
+  margin: 78px auto;
 }
 
-h1 {
-  font-size: 30px;
+.datepicker--day {
+  width: 100px;
+  height: 36px;
+  display: inline-block;
+  font-size: 32px;
 }
 
-img {
-  margin: 20px 0;
-  max-width: 200px;
-}
-
-
-
-.duration {
-  text-align: right;
-}
-
-.employee-name {
-  width: 20%;
-}
-
-.action-row {
-  width: 90%;
-}
-.work-sheet {
-  width: 100%;
-}
-
-.day {
-  width: 10%;
-}
-.day-row > td {
-  padding-top: 32px;
-  padding-bottom: 32px;
-}
-.day-row > td:first-child {
-  padding-left: 32px;
-}
-.day-row  {
-  border: 1px solid black;
-}
-
-.employee {
-  width: 90%;
-}
-
-.action {
-  width: 100%;
-}
-
-.employee > tr:nth-child(even) > td {
-  background-color: lightblue;
-}
-
-table td {
-  vertical-align: top;
-  text-align: left;
-}
-table {
-  border-collapse: collapse;
+.workday--table {
+  max-width: 780px;
+  margin: 78px auto;
 }
