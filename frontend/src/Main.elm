@@ -94,7 +94,7 @@ parseUrl url =
             route
 
         Nothing ->
-            NotFound
+            SelectAvailableDay
 
 
 fetchDay : String -> Cmd Msg
