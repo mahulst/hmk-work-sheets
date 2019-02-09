@@ -100,7 +100,7 @@ parseUrl url =
 fetchDay : String -> Cmd Msg
 fetchDay day =
     Http.get
-        { url = "http://localhost:3010/day/" ++ day
+        { url = "/api/day/" ++ day
         , expect = Http.expectJson GotDay workDayDecoder
         }
 
@@ -197,7 +197,7 @@ update msg model =
             ( { model | page = UploadingDatabase (Uploading 0) }
             , Http.request
                 { method = "POST"
-                , url = "http://localhost:3010/upload"
+                , url = "/api/upload"
                 , headers = []
                 , body = Http.multipartBody (List.map (Http.filePart "file") files)
                 , expect = Http.expectJson Uploaded workSheetDecoder
